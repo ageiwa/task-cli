@@ -112,6 +112,50 @@ func updateTask(id int, desc string) {
 	}
 }
 
+func deleteTask(id int) {
+	file, err := os.OpenFile(DB_FILE, os.O_RDWR, 0644)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	defer file.Close()
+
+	list := []Task{}
+	err = json.NewDecoder(file).Decode(&list)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	isFind := false
+
+	for i, task := range list {
+		if task.Id == id {
+			list = append(list[:i], list[i+1:]...)
+			isFind = true
+
+			break
+		}
+	}
+
+	if !isFind {
+		panic("No task with id: ")
+	}
+
+	data, err := json.Marshal(list)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	err = os.WriteFile(DB_FILE, data, 0644)
+
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
 func markInProgress(id int) {
 	file, err := os.OpenFile(DB_FILE, os.O_RDWR, 0644)
 
@@ -131,6 +175,7 @@ func markInProgress(id int) {
 	for i, task := range list {
 		if task.Id == id {
 			list[i].Status = "in progress"
+			list[i].UpdateAt = time.Now()
 			isFind = true
 			break
 		}
@@ -183,13 +228,27 @@ func readCommand(action *string, taskId *int, taskText *string) error {
 				*taskText = arg
 			}
 
+		} else if *action == "delete" {
+
+			if i == 2 {
+				argInt, err := strconv.ParseInt(arg, 10, 64)
+
+				if err != nil {
+					return fmt.Errorf("invalid task id: %s", arg)
+				}
+
+				*taskId = int(argInt)
+			} else if i == 3 {
+				*taskText = arg
+			}
+
 		} else if *action == "update" {
 
 			if i == 2 {
 				argInt, err := strconv.ParseInt(arg, 10, 64)
 
 				if err != nil {
-					return fmt.Errorf("Invalid task id: %s", arg)
+					return fmt.Errorf("invalid task id: %s", arg)
 				}
 
 				*taskId = int(argInt)
@@ -203,7 +262,7 @@ func readCommand(action *string, taskId *int, taskText *string) error {
 				argInt, err := strconv.ParseInt(arg, 10, 64)
 
 				if err != nil {
-					return fmt.Errorf("Invalid task id: %s", arg)
+					return fmt.Errorf("invalid task id: %s", arg)
 				}
 
 				*taskId = int(argInt)
@@ -216,26 +275,28 @@ func readCommand(action *string, taskId *int, taskText *string) error {
 }
 
 func main() {
-	list()
+	var (
+		action   string
+		taskId   int
+		taskText string
+	)
 
-	// var (
-	// 	action   string
-	// 	taskId   int
-	// 	taskText string
-	// )
+	err := readCommand(&action, &taskId, &taskText)
 
-	// err := readCommand(&action, &taskId, &taskText)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return
-	// }
-
-	// if action == "add" {
-	// 	createTask(taskText)
-	// } else if action == "update" {
-	// 	updateTask(taskId, taskText)
-	// } else if action == "mark-in-progress" {
-	// 	markInProgress(taskId)
-	// }
+	if action == "add" {
+		createTask(taskText)
+	} else if action == "update" {
+		updateTask(taskId, taskText)
+	} else if action == "delete" {
+		deleteTask(taskId)
+	} else if action == "mark-in-progress" {
+		markInProgress(taskId)
+	} else if action == "list" {
+		list()
+	}
 }
