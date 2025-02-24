@@ -114,7 +114,7 @@ func updateTask(id int, desc string) {
 }
 
 func deleteTask(id int) {
-	file, err := os.OpenFile(DB_FILE, os.O_RDWR, 0644)
+	file, err := os.OpenFile(DB_FILE, os.O_RDWR, PERM_CODE)
 
 	if err != nil {
 		panic(err.Error())
@@ -158,7 +158,7 @@ func deleteTask(id int) {
 }
 
 func changeStatus(id int, status string) {
-	file, err := os.OpenFile(DB_FILE, os.O_RDWR, 0644)
+	file, err := os.OpenFile(DB_FILE, os.O_RDWR, PERM_CODE)
 
 	if err != nil {
 		panic(err.Error())
