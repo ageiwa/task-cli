@@ -18,9 +18,10 @@ type Task struct {
 }
 
 const DB_FILE = "db.json"
+const PERM_CODE = 0644
 
 func createTask(desc string) {
-	file, err := os.OpenFile(DB_FILE, os.O_RDWR|os.O_CREATE, 0644)
+	file, err := os.OpenFile(DB_FILE, os.O_RDWR|os.O_CREATE, PERM_CODE)
 	idCounter := 0
 
 	if err != nil {
@@ -58,7 +59,7 @@ func createTask(desc string) {
 		return
 	}
 
-	_, err = file.WriteAt(data, 0)
+	err = os.WriteFile(DB_FILE, data, PERM_CODE)
 
 	if err != nil {
 		panic(err.Error())
@@ -68,7 +69,7 @@ func createTask(desc string) {
 }
 
 func updateTask(id int, desc string) {
-	file, err := os.OpenFile(DB_FILE, os.O_RDWR, 0644)
+	file, err := os.OpenFile(DB_FILE, os.O_RDWR, PERM_CODE)
 
 	if err != nil {
 		panic(err.Error())
@@ -105,7 +106,7 @@ func updateTask(id int, desc string) {
 		panic(err.Error())
 	}
 
-	_, err = file.WriteAt(data, 0)
+	err = os.WriteFile(DB_FILE, data, PERM_CODE)
 
 	if err != nil {
 		panic(err.Error())
@@ -149,14 +150,14 @@ func deleteTask(id int) {
 		panic(err.Error())
 	}
 
-	err = os.WriteFile(DB_FILE, data, 0644)
+	err = os.WriteFile(DB_FILE, data, PERM_CODE)
 
 	if err != nil {
 		panic(err.Error())
 	}
 }
 
-func markInProgress(id int) {
+func changeStatus(id int, status string) {
 	file, err := os.OpenFile(DB_FILE, os.O_RDWR, 0644)
 
 	if err != nil {
@@ -174,7 +175,7 @@ func markInProgress(id int) {
 
 	for i, task := range list {
 		if task.Id == id {
-			list[i].Status = "in progress"
+			list[i].Status = status
 			list[i].UpdateAt = time.Now()
 			isFind = true
 			break
@@ -191,14 +192,14 @@ func markInProgress(id int) {
 		panic(err.Error())
 	}
 
-	_, err = file.WriteAt(data, 0)
+	err = os.WriteFile(DB_FILE, data, PERM_CODE)
 
 	if err != nil {
 		panic(err.Error())
 	}
 }
 
-func list() {
+func list(filter string) {
 	file, err := os.ReadFile(DB_FILE)
 
 	if err != nil {
@@ -212,12 +213,22 @@ func list() {
 		panic(err.Error())
 	}
 
+	if filter == "done" || filter == "todo" || filter == "in-progress" {
+		for _, task := range list {
+			if task.Status == filter {
+				fmt.Printf("%d %s\n", task.Id, task.Description)
+			}
+		}
+
+		return
+	}
+
 	for _, task := range list {
 		fmt.Printf("%d %s\n", task.Id, task.Description)
 	}
 }
 
-func readCommand(action *string, taskId *int, taskText *string) error {
+func readCommand(action *string, taskId *int, taskText *string, status *string, listFilter *string) error {
 	for i, arg := range os.Args {
 
 		if i == 1 {
@@ -256,7 +267,13 @@ func readCommand(action *string, taskId *int, taskText *string) error {
 				*taskText = arg
 			}
 
-		} else if *action == "mark-in-progress" {
+		} else if *action == "mark-in-progress" || *action == "mark-done"  {
+
+			if *action == "mark-in-progress" {
+				*status = "in-progress"
+			} else {
+				*status = "done"
+			}
 
 			if i == 2 {
 				argInt, err := strconv.ParseInt(arg, 10, 64)
@@ -266,6 +283,12 @@ func readCommand(action *string, taskId *int, taskText *string) error {
 				}
 
 				*taskId = int(argInt)
+			}
+
+		} else if *action == "list" {
+
+			if i == 2 {
+				*listFilter = arg
 			}
 
 		}
@@ -279,9 +302,11 @@ func main() {
 		action   string
 		taskId   int
 		taskText string
+		status string
+		listFilter string
 	)
 
-	err := readCommand(&action, &taskId, &taskText)
+	err := readCommand(&action, &taskId, &taskText, &status, &listFilter)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -294,9 +319,9 @@ func main() {
 		updateTask(taskId, taskText)
 	} else if action == "delete" {
 		deleteTask(taskId)
-	} else if action == "mark-in-progress" {
-		markInProgress(taskId)
+	} else if action == "mark-in-progress" || action == "mark-done" {
+		changeStatus(taskId, status)
 	} else if action == "list" {
-		list()
+		list(listFilter)
 	}
 }
