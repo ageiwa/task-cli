@@ -164,6 +164,8 @@ func changeStatus(id int, status string) {
 		panic(err.Error())
 	}
 
+	defer file.Close()
+
 	list := []Task{}
 	err = json.NewDecoder(file).Decode(&list)
 
@@ -200,14 +202,14 @@ func changeStatus(id int, status string) {
 }
 
 func list(filter string) {
-	file, err := os.ReadFile(DB_FILE)
+	data, err := os.ReadFile(DB_FILE)
 
 	if err != nil {
 		panic(err.Error())
 	}
 
 	list := []Task{}
-	err = json.Unmarshal(file, &list)
+	err = json.Unmarshal(data, &list)
 
 	if err != nil {
 		panic(err.Error())
